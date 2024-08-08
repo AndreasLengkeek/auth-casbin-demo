@@ -1,23 +1,26 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using auth_casbin.Data;
+using auth_casbin.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace auth_casbin.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 [Produces("application/json")]
-public class AuthController : ControllerBase
+public class AuthController(ApplicationDbContext context, ILogger<AuthController> logger) : ControllerBase
 {
-    public AuthController()
+    [HttpGet(nameof(GetWeatherForecast))]
+    public async Task<IEnumerable<Forecast>> GetWeatherForecast()
     {
+        logger.LogInformation($"Start {nameof(GetWeatherForecast)}");
+        var results = await context.Forecasts.ToListAsync();
+        return results;
     }
 
-    [HttpGet(nameof(GetWeatherForecast))]
-    public IEnumerable<string> GetWeatherForecast()
+    [HttpGet(nameof(Sample))]
+    public string Sample()
     {
-        return new List<string> { "65 C", "40 C"};
+        return "Ok";
     }
 }

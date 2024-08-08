@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using auth_casbin.Data;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace auth_casbin;
 
@@ -17,6 +20,14 @@ public static class ConfigureServices
         builder.Services.AddSwaggerGen();
     }
 
+    public static void AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(configuration.GetConnectionString("database"));
+        var dataSource = dataSourceBuilder.Build();
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseNpgsql(dataSource));
+    }
+
     public static async Task UseWebAPI(this WebApplication app)
     {
         // Configure the HTTP request pipeline.
@@ -26,10 +37,17 @@ public static class ConfigureServices
 
             app.UseSwagger();
             app.UseSwaggerUI();
+
+            using var scope = app.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
         }
 
-        app.UseHttpsRedirection();
+        app.Use(async (context, next) => {
+            app.Logger.LogInformation("Logging");
+            await next(context);
+        });
 
         app.MapControllers();
+
     }
 }
