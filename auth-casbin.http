@@ -1,0 +1,6 @@
+@auth_casbin_HostAddress = http://localhost:5047
+
+GET {{auth_casbin_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
