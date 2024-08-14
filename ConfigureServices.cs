@@ -1,8 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Security.Claims;
 using auth_casbin.Data;
+using Casbin;
+using Casbin.AspNetCore.Authorization;
+using Casbin.AspNetCore.Authorization.Transformers;
+using Casbin.Persist.Adapter.EFCore;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -18,6 +20,10 @@ public static class ConfigureServices
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
+
+        builder.Services
+            .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie();
     }
 
     public static void AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -26,6 +32,21 @@ public static class ConfigureServices
         var dataSource = dataSourceBuilder.Build();
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(dataSource));
+
+        services.AddDbContext<CasbinDbContext<int>>(options =>
+            options.UseNpgsql(configuration.GetConnectionString("casbin")));
+
+
+        services.AddCasbinAuthorization(options =>
+        {
+            options.PreferSubClaimType = ClaimTypes.Name;
+
+            options.DefaultModelPath = "CasbinConfig/rbac_model.conf";
+            options.DefaultEnforcerFactory = (p, m) =>
+                new Enforcer(m, new EFCoreAdapter<int>(p.GetRequiredService<CasbinDbContext<int>>()));
+
+            options.DefaultRequestTransformerType = typeof(KeyMatchRequestTransformer);
+        });
     }
 
     public static async Task UseWebAPI(this WebApplication app)
@@ -38,16 +59,14 @@ public static class ConfigureServices
             app.UseSwagger();
             app.UseSwaggerUI();
 
-            using var scope = app.Services.CreateScope();
-            await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
+            // using var scope = app.Services.CreateScope();
+            // await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
         }
 
-        app.Use(async (context, next) => {
-            app.Logger.LogInformation("Logging");
-            await next(context);
-        });
+        app.UseAuthentication();
+        app.UseCasbinAuthorization();
+        app.UseAuthorization();
 
         app.MapControllers();
-
     }
 }
