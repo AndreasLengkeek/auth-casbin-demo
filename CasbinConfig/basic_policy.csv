@@ -1,0 +1,7 @@
+
+p, admin, /Auth/GetAuth, GET, read
+p, admin, /Auth/GetWeatherForecast, GET, read
+p, viewer, /Auth/GetWeatherForecast, GET, read
+
+g, alice@example.com, admin
+g, bob@example.com, viewer

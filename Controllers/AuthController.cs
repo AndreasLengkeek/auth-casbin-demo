@@ -10,13 +10,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace auth_casbin.Controllers;
 
-[CasbinAuthorize]
 [ApiController]
 [Route("[controller]")]
 [Produces("application/json")]
 public class AuthController(ApplicationDbContext context, ILogger<AuthController> logger) : ControllerBase
 {
-    [CasbinAuthorize]
+    [CasbinAuthorize()]
     [HttpGet(nameof(GetWeatherForecast))]
     public async Task<IEnumerable<Forecast>> GetWeatherForecast()
     {
@@ -38,8 +37,8 @@ public class AuthController(ApplicationDbContext context, ILogger<AuthController
     }
 
     [CasbinAuthorize()]
-    [HttpGet(nameof(GetData))]
-    public async Task<IEnumerable<Forecast>> GetData()
+    [HttpGet(nameof(GetAuth))]
+    public async Task<IEnumerable<Forecast>> GetAuth()
     {
         logger.LogInformation($"Start {nameof(GetWeatherForecast)}");
         var results = await context.Forecasts.ToListAsync();
@@ -54,10 +53,12 @@ public class AuthController(ApplicationDbContext context, ILogger<AuthController
             Name = username
         };
 
+        // manually setting up the two users. a real app should load the users from an identity provider and have the role in claims
+        // or inject the role as a claim as part of the aspnet middleware
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, user.Name),
-            new Claim(ClaimTypes.Role, "admin"),
+            new Claim(ClaimTypes.Role, user.Name == "alice@example.com" ? "admin" : "viewer"),
         };
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity));

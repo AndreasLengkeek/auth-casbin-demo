@@ -1,8 +1,11 @@
 using System.Security.Claims;
+using auth_casbin.Auth;
+using auth_casbin.Common;
 using auth_casbin.Data;
 using Casbin;
 using Casbin.AspNetCore.Authorization;
 using Casbin.AspNetCore.Authorization.Transformers;
+using Casbin.Model;
 using Casbin.Persist.Adapter.EFCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -33,22 +36,35 @@ public static class ConfigureServices
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(dataSource));
 
-        services.AddDbContext<CasbinDbContext<int>>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("casbin")));
-
+        services.AddDbContext<CasbinDatabaseContext>(options => {
+            options.UseNpgsql(configuration.GetConnectionString("casbin"));
+        });
+        services.AddSingleton<IRequestTransformer<StringRequestValues>, CustomRequestTransformer>();
 
         services.AddCasbinAuthorization(options =>
         {
             options.PreferSubClaimType = ClaimTypes.Name;
 
             options.DefaultModelPath = "CasbinConfig/rbac_model.conf";
-            options.DefaultEnforcerFactory = (p, m) =>
-                new Enforcer(m, new EFCoreAdapter<int>(p.GetRequiredService<CasbinDbContext<int>>()));
+            options.DefaultPolicyPath = "CasbinConfig/basic_policy.csv";
 
-            options.DefaultRequestTransformerType = typeof(KeyMatchRequestTransformer);
+            // Load Policy from database instead of file
+            // options.DefaultEnforcerFactory = (p, m) =>
+            //     new Enforcer(m, new EFCoreAdapter<int>(p.GetRequiredService<CasbinDatabaseContext>()));
+
+            options.DefaultRequestTransformerType = typeof(CustomRequestTransformer);
         });
     }
 
+    /// <summary>
+    ///
+    /// </summary>
+    /// <param name="app"></param>
+    /// <returns></returns> <summary>
+    ///
+    /// </summary>
+    /// <param name="app"></param>
+    /// <returns></returns>
     public static async Task UseWebAPI(this WebApplication app)
     {
         // Configure the HTTP request pipeline.

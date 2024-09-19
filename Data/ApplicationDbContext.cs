@@ -1,4 +1,5 @@
 using auth_casbin.Models;
+using Casbin.Persist.Adapter.EFCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace auth_casbin.Data;
